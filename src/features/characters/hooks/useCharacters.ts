@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   charactersService,
   type Character,
   type CharacterFilters,
   type CharactersService,
 } from '../services/charactersService'
-import { isAbortError } from '../../../shared/api/httpClient'
+import { getApiErrorMessage } from '../../../shared/api/httpClient'
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue'
+import { useAsyncRequest } from '../../../shared/hooks/useAsyncRequest'
 
 type UseCharactersResult = {
   data: Character[]
   loading: boolean
   error: string | null
+  retry: () => void
   page: number
   totalPages: number
   hasNextPage: boolean
@@ -33,8 +35,6 @@ export function useCharacters(
 ): UseCharactersResult {
   const { initialPage = 1, initialNameFilter = '' } = options
   const [data, setData] = useState<Character[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(initialPage)
   const [totalPages, setTotalPages] = useState(1)
   const [nameFilter, setNameFilter] = useState(initialNameFilter)
@@ -53,54 +53,30 @@ export function useCharacters(
     setPage((currentPage) => Math.max(currentPage - 1, 1))
   }, [])
 
-  useEffect(() => {
-    const filters: CharacterFilters = { name: debouncedNameFilter }
-    const abortController = new AbortController()
-    let isCancelled = false
+  const filters = useMemo<CharacterFilters>(() => ({ name: debouncedNameFilter }), [debouncedNameFilter])
+  const request = useCallback((signal: AbortSignal) => service.getCharacters(page, filters, signal), [filters, page, service])
+  const handleSuccess = useCallback((response: Awaited<ReturnType<CharactersService['getCharacters']>>) => {
+    setData(response.results)
+    setTotalPages(response.info.pages)
+  }, [])
+  const handleError = useCallback(() => {
+    setData([])
+    setTotalPages(1)
+  }, [])
 
-    async function loadCharacters() {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await service.getCharacters(page, filters, abortController.signal)
-
-        if (isCancelled) {
-          return
-        }
-
-        setData(response.results)
-        setTotalPages(response.info.pages)
-      } catch (err) {
-        if (isCancelled) {
-          return
-        }
-
-        if (isAbortError(err)) {
-          return
-        }
-
-        setData([])
-        setTotalPages(1)
-        setError(err instanceof Error ? err.message : 'Unexpected error while loading characters')
-      } finally {
-        if (!isCancelled) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadCharacters()
-
-    return () => {
-      isCancelled = true
-      abortController.abort()
-    }
-  }, [page, debouncedNameFilter, service])
+  const { loading, error, retry } = useAsyncRequest({
+    deps: [request],
+    request,
+    onSuccess: handleSuccess,
+    onError: handleError,
+    getErrorMessage: (err) => getApiErrorMessage(err, 'Unexpected error while loading characters'),
+  })
 
   return {
     data,
     loading,
     error,
+    retry,
     page,
     totalPages,
     hasNextPage: page < totalPages,

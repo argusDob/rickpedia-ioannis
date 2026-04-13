@@ -4,8 +4,9 @@ import {
   type Location,
   type LocationsService,
 } from '../services/locationsService'
-import { isAbortError } from '../../../shared/api/httpClient'
+import { getApiErrorMessage } from '../../../shared/api/httpClient'
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue'
+import { useAsyncRequest } from '../../../shared/hooks/useAsyncRequest'
 
 const ITEMS_PER_UI_PAGE = 10
 const API_PAGE_SIZE = 20
@@ -14,6 +15,7 @@ type UseLocationsResult = {
   data: Location[]
   loading: boolean
   error: string | null
+  retry: () => void
   page: number
   totalPages: number
   hasNextPage: boolean
@@ -36,8 +38,6 @@ export function useLocations(
   const { initialPage = 1, initialNameFilter = '' } = options
   const [data, setData] = useState<Location[]>([])
   const [apiResults, setApiResults] = useState<Location[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(initialPage)
   const [totalPages, setTotalPages] = useState(1)
   const [nameFilter, setNameFilter] = useState(initialNameFilter)
@@ -58,62 +58,35 @@ export function useLocations(
     setPage((currentPage) => Math.max(currentPage - 1, 1))
   }, [])
 
-  useEffect(() => {
-    const abortController = new AbortController()
-    let isCancelled = false
+  const request = useCallback((signal: AbortSignal) => (
+    service.getLocations(apiPage, { name: debouncedNameFilter }, signal)
+  ), [apiPage, debouncedNameFilter, service])
+  const handleSuccess = useCallback((response: Awaited<ReturnType<LocationsService['getLocations']>>) => {
+    setApiResults(response.results)
 
-    async function loadLocations() {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await service.getLocations(
-          apiPage,
-          { name: debouncedNameFilter },
-          abortController.signal,
-        )
+    const subPagesInCurrentApiPage = Math.max(
+      1,
+      Math.ceil(response.results.length / ITEMS_PER_UI_PAGE),
+    )
+    const totalUiPages = Math.max(
+      1,
+      (response.info.pages - 1) * (API_PAGE_SIZE / ITEMS_PER_UI_PAGE) + subPagesInCurrentApiPage,
+    )
+    setTotalPages(totalUiPages)
+  }, [])
+  const handleError = useCallback(() => {
+    setData([])
+    setApiResults([])
+    setTotalPages(1)
+  }, [])
 
-        if (isCancelled) {
-          return
-        }
-
-        setApiResults(response.results)
-
-        const subPagesInCurrentApiPage = Math.max(
-          1,
-          Math.ceil(response.results.length / ITEMS_PER_UI_PAGE),
-        )
-        const totalUiPages = Math.max(
-          1,
-          (response.info.pages - 1) * (API_PAGE_SIZE / ITEMS_PER_UI_PAGE) + subPagesInCurrentApiPage,
-        )
-        setTotalPages(totalUiPages)
-      } catch (err) {
-        if (isCancelled) {
-          return
-        }
-
-        if (isAbortError(err)) {
-          return
-        }
-
-        setData([])
-        setApiResults([])
-        setTotalPages(1)
-        setError(err instanceof Error ? err.message : 'Unexpected error while loading locations')
-      } finally {
-        if (!isCancelled) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadLocations()
-
-    return () => {
-      isCancelled = true
-      abortController.abort()
-    }
-  }, [apiPage, debouncedNameFilter, service])
+  const { loading, error, retry } = useAsyncRequest({
+    deps: [request],
+    request,
+    onSuccess: handleSuccess,
+    onError: handleError,
+    getErrorMessage: (err) => getApiErrorMessage(err, 'Unexpected error while loading locations'),
+  })
 
   useEffect(() => {
     const sliceStart = subPageIndex * ITEMS_PER_UI_PAGE
@@ -131,6 +104,7 @@ export function useLocations(
     data,
     loading,
     error,
+    retry,
     page,
     totalPages,
     hasNextPage: page < totalPages,

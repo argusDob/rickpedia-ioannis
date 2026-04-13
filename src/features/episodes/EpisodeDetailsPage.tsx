@@ -1,60 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
-import { isAbortError } from '../../shared/api/httpClient'
+import ErrorState from '../../shared/components/ErrorState'
+import { getApiErrorMessage } from '../../shared/api/httpClient'
 import { episodesService, type Episode } from './services/episodesService'
+import { useAsyncRequest } from '../../shared/hooks/useAsyncRequest'
 
 export default function EpisodeDetailsPage() {
   const { id } = useParams()
   const [episode, setEpisode] = useState<Episode | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const parsedId = Number(id)
-
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      setEpisode(null)
-      setLoading(false)
-      setError('Invalid episode id')
-      return
+  const parsedId = useMemo(() => Number(id), [id])
+  const hasValidId = Number.isInteger(parsedId) && parsedId > 0
+  const request = useCallback((signal: AbortSignal) => {
+    if (!hasValidId) {
+      return Promise.reject(new Error('Invalid episode id'))
     }
 
-    const abortController = new AbortController()
-    let isCancelled = false
+    return episodesService.getEpisodeById(parsedId, signal)
+  }, [hasValidId, parsedId])
 
-    async function loadEpisode() {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await episodesService.getEpisodeById(parsedId, abortController.signal)
-
-        if (isCancelled) {
-          return
-        }
-
-        setEpisode(response)
-      } catch (err) {
-        if (isCancelled || isAbortError(err)) {
-          return
-        }
-
-        setEpisode(null)
-        setError(err instanceof Error ? err.message : 'Unexpected error while loading episode')
-      } finally {
-        if (!isCancelled) {
-          setLoading(false)
-        }
-      }
-    }
-
-    void loadEpisode()
-
-    return () => {
-      isCancelled = true
-      abortController.abort()
-    }
-  }, [id])
+  const { loading, error, retry } = useAsyncRequest({
+    deps: [request],
+    request,
+    onSuccess: setEpisode,
+    onError: () => setEpisode(null),
+    getErrorMessage: (err) => hasValidId
+      ? getApiErrorMessage(err, 'Unexpected error while loading episode')
+      : 'Invalid episode id',
+  })
 
   if (loading) {
     return <SuspenseFallback message="Loading episode details..." />
@@ -66,7 +39,7 @@ export default function EpisodeDetailsPage() {
         <Link to="/episodes" className="inline-flex text-sm font-medium text-cyan-700 hover:text-cyan-800">
           Back to episodes
         </Link>
-        <p className="text-red-600">{error}</p>
+        <ErrorState message={error} actionLabel="Try again" onAction={retry} />
       </section>
     )
   }

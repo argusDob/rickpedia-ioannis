@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useEpisodes } from './hooks/useEpisodes'
 import CharacterCard from '../characters/components/CharacterCard'
 import { charactersService, type Character } from '../characters/services/charactersService'
+import { getApiErrorMessage } from '../../shared/api/httpClient'
 import FilterInput from '../../shared/components/FilterInput'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
+import ErrorState from '../../shared/components/ErrorState'
 import { useIntersectionObserver } from '../../shared/hooks/useIntersectionObserver'
 
 export default function EpisodesPage() {
@@ -20,6 +22,7 @@ export default function EpisodesPage() {
     data,
     loading,
     error,
+    retry,
     page,
     totalPages,
     hasNextPage,
@@ -105,7 +108,7 @@ export default function EpisodesPage() {
     } catch (error) {
       setCharacterLoadErrors((currentErrors) => ({
         ...currentErrors,
-        [episodeId]: error instanceof Error ? error.message : 'Unexpected error while loading characters',
+        [episodeId]: getApiErrorMessage(error, 'Unexpected error while loading characters'),
       }))
     } finally {
       setLoadingCharacterEpisodeIds((currentIds) => {
@@ -151,7 +154,7 @@ export default function EpisodesPage() {
       />
 
       {isInitialLoading && <SuspenseFallback message="Loading episodes..." />}
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <ErrorState message={error} actionLabel="Try again" onAction={retry} />}
 
       {!error && !isInitialLoading && (
         <div ref={setScrollContainer} className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
@@ -184,7 +187,7 @@ export default function EpisodesPage() {
                     )}
 
                     {characterLoadErrors[episode.id] && (
-                      <p className="text-sm text-red-600">{characterLoadErrors[episode.id]}</p>
+                      <ErrorState message={characterLoadErrors[episode.id]!} compact />
                     )}
 
                     {!loadingCharacterEpisodeIds.has(episode.id) &&
@@ -195,7 +198,7 @@ export default function EpisodesPage() {
 
                     {(episodeCharacters[episode.id]?.length ?? 0) > 0 && (
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {episodeCharacters[episode.id].map((character) => (
+                        {(episodeCharacters[episode.id] ?? []).map((character) => (
                           <CharacterCard
                             key={character.id}
                             character={character}

@@ -4,6 +4,7 @@ import { useLocations } from './hooks/useLocations'
 import FilterInput from '../../shared/components/FilterInput'
 import PaginationControls from '../../shared/components/PaginationControls'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
+import ErrorState from '../../shared/components/ErrorState'
 
 export default function LocationsPage() {
   const navigate = useNavigate()
@@ -16,6 +17,7 @@ export default function LocationsPage() {
     data,
     loading,
     error,
+    retry,
     page,
     totalPages,
     hasNextPage,
@@ -57,7 +59,7 @@ export default function LocationsPage() {
       />
 
       {loading && <SuspenseFallback message="Loading locations..." />}
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <ErrorState message={error} actionLabel="Try again" onAction={retry} />}
 
       {!loading && !error && (
         <>

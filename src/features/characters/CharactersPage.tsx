@@ -6,6 +6,7 @@ import { type Character } from './services/charactersService'
 import PaginationControls from '../../shared/components/PaginationControls'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
 import FilterInput from '../../shared/components/FilterInput'
+import ErrorState from '../../shared/components/ErrorState'
 
 export default function CharactersPage() {
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ export default function CharactersPage() {
     data,
     loading,
     error,
+    retry,
     page,
     totalPages,
     hasNextPage,
@@ -90,7 +92,7 @@ export default function CharactersPage() {
       />
 
       {loading && <SuspenseFallback message="Loading characters..." />}
-      {error && <p className="text-red-600">{error}</p>}
+      {error && <ErrorState message={error} actionLabel="Try again" onAction={retry} />}
 
       {!loading && !error && (
         <>

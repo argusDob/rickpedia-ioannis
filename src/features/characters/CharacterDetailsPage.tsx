@@ -1,60 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
-import { isAbortError } from '../../shared/api/httpClient'
+import ErrorState from '../../shared/components/ErrorState'
+import { getApiErrorMessage } from '../../shared/api/httpClient'
 import { charactersService, type Character } from './services/charactersService'
+import { useAsyncRequest } from '../../shared/hooks/useAsyncRequest'
 
 export default function CharacterDetailsPage() {
   const { id } = useParams()
   const [character, setCharacter] = useState<Character | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const parsedId = Number(id)
-
-    if (!Number.isInteger(parsedId) || parsedId <= 0) {
-      setCharacter(null)
-      setLoading(false)
-      setError('Invalid character id')
-      return
+  const parsedId = useMemo(() => Number(id), [id])
+  const hasValidId = Number.isInteger(parsedId) && parsedId > 0
+  const request = useCallback((signal: AbortSignal) => {
+    if (!hasValidId) {
+      return Promise.reject(new Error('Invalid character id'))
     }
 
-    const abortController = new AbortController()
-    let isCancelled = false
+    return charactersService.getCharacterById(parsedId, signal)
+  }, [hasValidId, parsedId])
 
-    async function loadCharacter() {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await charactersService.getCharacterById(parsedId, abortController.signal)
-
-        if (isCancelled) {
-          return
-        }
-
-        setCharacter(response)
-      } catch (err) {
-        if (isCancelled || isAbortError(err)) {
-          return
-        }
-
-        setCharacter(null)
-        setError(err instanceof Error ? err.message : 'Unexpected error while loading character')
-      } finally {
-        if (!isCancelled) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadCharacter()
-
-    return () => {
-      isCancelled = true
-      abortController.abort()
-    }
-  }, [id])
+  const { loading, error, retry } = useAsyncRequest({
+    deps: [request],
+    request,
+    onSuccess: setCharacter,
+    onError: () => setCharacter(null),
+    getErrorMessage: (err) => hasValidId
+      ? getApiErrorMessage(err, 'Unexpected error while loading character')
+      : 'Invalid character id',
+  })
 
   if (loading) {
     return <SuspenseFallback message="Loading character details..." />
@@ -66,7 +39,7 @@ export default function CharacterDetailsPage() {
         <Link to="/characters" className="inline-flex text-sm font-medium text-cyan-700 hover:text-cyan-800">
           Back to characters
         </Link>
-        <p className="text-red-600">{error}</p>
+        <ErrorState message={error} actionLabel="Try again" onAction={retry} />
       </section>
     )
   }
