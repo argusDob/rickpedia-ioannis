@@ -81,6 +81,28 @@ export class HttpError extends Error {
   }
 }
 
+export function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof TypeError) {
+    return 'Network error. Please check your connection and try again.'
+  }
+
+  if (error instanceof HttpError) {
+    if (error.status === 404) {
+      return 'No results found.'
+    }
+
+    if (error.status === 429) {
+      return 'Too many retries. Please try again shortly.'
+    }
+
+    if (error.status >= 500) {
+      return 'Server error. Please try again later.'
+    }
+  }
+
+  return error instanceof Error ? error.message : fallbackMessage
+}
+
 export function createFetchHttpClient(): HttpClient {
   return {
     async get<T>(
@@ -100,7 +122,7 @@ export function createFetchHttpClient(): HttpClient {
         }
       }
 
-      const response = await fetch(requestUrl, { signal })
+      const response = await fetch(requestUrl, signal ? { signal } : {})
 
       if (!response.ok) {
         throw new HttpError(
