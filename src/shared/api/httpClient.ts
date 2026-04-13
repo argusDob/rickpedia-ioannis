@@ -1,3 +1,5 @@
+import { createInMemoryCache } from '../utils/inMemoryCache'
+
 export interface HttpClient {
   get<T>(
     url: string,
@@ -19,14 +21,12 @@ export function isAbortError(error: unknown): boolean {
   )
 }
 
-type CacheEntry = {
-  data: unknown
-  expiresAt: number
-}
-
-const responseCache = new Map<string, CacheEntry>()
 const DEFAULT_TTL_MS = 60_000
 const MAX_CACHE_ENTRIES = 200
+const responseCache = createInMemoryCache<unknown>({
+  ttlMs: DEFAULT_TTL_MS,
+  maxEntries: MAX_CACHE_ENTRIES,
+})
 
 function buildUrl(url: string, params?: Record<string, string | number | boolean | undefined>) {
   const requestUrl = new URL(url)
@@ -69,33 +69,6 @@ function buildQueryCacheKey(
   return `${url}::${query}`
 }
 
-function enforceMaxEntries() {
-  while (responseCache.size > MAX_CACHE_ENTRIES) {
-    const oldestKey = responseCache.keys().next().value as string | undefined
-
-    if (!oldestKey) {
-      return
-    }
-
-    responseCache.delete(oldestKey)
-  }
-}
-
-function getCached<T>(key: string) {
-  const cached = responseCache.get(key)
-
-  if (!cached) {
-    return null
-  }
-
-  if (Date.now() > cached.expiresAt) {
-    responseCache.delete(key)
-    return null
-  }
-
-  return cached.data as T
-}
-
 export class HttpError extends Error {
   public readonly status: number
   public readonly statusText: string
@@ -120,7 +93,7 @@ export function createFetchHttpClient(): HttpClient {
       const shouldUseCache = typeof params?.name === 'string' && params.name.trim().length > 0
 
       if (shouldUseCache) {
-        const cached = getCached<T>(cacheKey)
+        const cached = responseCache.get(cacheKey) as T | null
 
         if (cached !== null) {
           return cached
@@ -140,13 +113,7 @@ export function createFetchHttpClient(): HttpClient {
       const data = (await response.json()) as T
 
       if (shouldUseCache) {
-        responseCache.set(cacheKey, {
-          data,
-          expiresAt: Date.now() + DEFAULT_TTL_MS,
-        })
-
-        console.log('responseCache', responseCache)
-        enforceMaxEntries()
+        responseCache.set(cacheKey, data)
       }
 
       return data
@@ -155,11 +122,7 @@ export function createFetchHttpClient(): HttpClient {
       responseCache.clear()
     },
     invalidateCache(predicate: (key: string) => boolean) {
-      for (const key of responseCache.keys()) {
-        if (predicate(key)) {
-          responseCache.delete(key)
-        }
-      }
+      responseCache.invalidate(predicate)
     },
   }
 }

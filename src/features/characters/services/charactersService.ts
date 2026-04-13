@@ -1,4 +1,5 @@
 import { httpClient, type HttpClient } from '../../../shared/api/httpClient'
+import { createInMemoryCache } from '../../../shared/utils/inMemoryCache'
 
 const CHARACTER_API_URL = 'https://rickandmortyapi.com/api/character'
 const CHARACTER_DETAILS_TTL_MS = 60_000
@@ -40,13 +41,15 @@ export interface CharactersService {
   getCharactersByIds(ids: number[], signal?: AbortSignal): Promise<Character[]>
 }
 
-type CharacterDetailsCacheEntry = {
-  data: Character
-  expiresAt: number
-}
-
-const characterDetailsCache = new Map<number, CharacterDetailsCacheEntry>()
+const characterDetailsCache = createInMemoryCache<Character>({
+  ttlMs: CHARACTER_DETAILS_TTL_MS,
+  maxEntries: 500,
+})
 const characterDetailsInFlight = new Map<number, Promise<Character>>()
+
+function getCharacterCacheKey(id: number) {
+  return String(id)
+}
 
 function createAbortError() {
   return new DOMException('The operation was aborted.', 'AbortError')
@@ -86,14 +89,11 @@ export function createCharactersService(client: HttpClient): CharactersService {
       }, signal)
     },
     getCharacterById(id, signal) {
-      const cachedCharacter = characterDetailsCache.get(id)
-
-      if (cachedCharacter && Date.now() < cachedCharacter.expiresAt) {
-        return withAbortSignal(Promise.resolve(cachedCharacter.data), signal)
-      }
+      const cacheKey = getCharacterCacheKey(id)
+      const cachedCharacter = characterDetailsCache.get(cacheKey)
 
       if (cachedCharacter) {
-        characterDetailsCache.delete(id)
+        return withAbortSignal(Promise.resolve(cachedCharacter), signal)
       }
 
       const existingRequest = characterDetailsInFlight.get(id)
@@ -105,10 +105,7 @@ export function createCharactersService(client: HttpClient): CharactersService {
       const request = client
         .get<Character>(`${CHARACTER_API_URL}/${id}`)
         .then((character) => {
-          characterDetailsCache.set(id, {
-            data: character,
-            expiresAt: Date.now() + CHARACTER_DETAILS_TTL_MS,
-          })
+          characterDetailsCache.set(cacheKey, character)
 
           return character
         })
@@ -131,15 +128,12 @@ export function createCharactersService(client: HttpClient): CharactersService {
       const missingIds: number[] = []
 
       uniqueIds.forEach((id) => {
-        const cachedCharacter = characterDetailsCache.get(id)
-
-        if (cachedCharacter && Date.now() < cachedCharacter.expiresAt) {
-          resolvedCharacters.set(id, cachedCharacter.data)
-          return
-        }
+        const cacheKey = getCharacterCacheKey(id)
+        const cachedCharacter = characterDetailsCache.get(cacheKey)
 
         if (cachedCharacter) {
-          characterDetailsCache.delete(id)
+          resolvedCharacters.set(id, cachedCharacter)
+          return
         }
 
         missingIds.push(id)
@@ -154,10 +148,7 @@ export function createCharactersService(client: HttpClient): CharactersService {
         const characters = Array.isArray(response) ? response : [response]
 
         characters.forEach((character) => {
-          characterDetailsCache.set(character.id, {
-            data: character,
-            expiresAt: Date.now() + CHARACTER_DETAILS_TTL_MS,
-          })
+          characterDetailsCache.set(getCharacterCacheKey(character.id), character)
           resolvedCharacters.set(character.id, character)
         })
       }
