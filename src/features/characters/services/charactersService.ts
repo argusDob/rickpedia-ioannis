@@ -51,35 +51,6 @@ function getCharacterCacheKey(id: number) {
   return String(id)
 }
 
-function createAbortError() {
-  return new DOMException('The operation was aborted.', 'AbortError')
-}
-
-function withAbortSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
-  if (!signal) {
-    return promise
-  }
-
-  if (signal.aborted) {
-    return Promise.reject(createAbortError())
-  }
-
-  return new Promise<T>((resolve, reject) => {
-    const handleAbort = () => reject(createAbortError())
-    signal.addEventListener('abort', handleAbort, { once: true })
-
-    promise
-      .then((value) => {
-        signal.removeEventListener('abort', handleAbort)
-        resolve(value)
-      })
-      .catch((error: unknown) => {
-        signal.removeEventListener('abort', handleAbort)
-        reject(error)
-      })
-  })
-}
-
 export function createCharactersService(client: HttpClient): CharactersService {
   return {
     getCharacters(page, filters = {}, signal) {
@@ -93,29 +64,32 @@ export function createCharactersService(client: HttpClient): CharactersService {
       const cachedCharacter = characterDetailsCache.get(cacheKey)
 
       if (cachedCharacter) {
-        return withAbortSignal(Promise.resolve(cachedCharacter), signal)
+        return Promise.resolve(cachedCharacter)
       }
 
-      const existingRequest = characterDetailsInFlight.get(id)
+      const existingRequest = !signal ? characterDetailsInFlight.get(id) : undefined
 
       if (existingRequest) {
-        return withAbortSignal(existingRequest, signal)
+        return existingRequest
       }
 
       const request = client
-        .get<Character>(`${CHARACTER_API_URL}/${id}`)
+        .get<Character>(`${CHARACTER_API_URL}/${id}`, undefined, signal)
         .then((character) => {
           characterDetailsCache.set(cacheKey, character)
 
           return character
         })
-        .finally(() => {
+
+      if (!signal) {
+        const dedupedRequest = request.finally(() => {
           characterDetailsInFlight.delete(id)
         })
+        characterDetailsInFlight.set(id, dedupedRequest)
+        return dedupedRequest
+      }
 
-      characterDetailsInFlight.set(id, request)
-
-      return withAbortSignal(request, signal)
+      return request
     },
     async getCharactersByIds(ids, signal) {
       const uniqueIds = Array.from(new Set(ids.filter((id) => Number.isInteger(id) && id > 0)))
