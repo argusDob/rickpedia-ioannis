@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import CharacterCard from './components/CharacterCard'
 import { useCharacters } from './hooks/useCharacters'
-import { charactersService, type Character } from './services/charactersService'
+import { type Character } from './services/charactersService'
 import PaginationControls from '../../shared/components/PaginationControls'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
 import FilterInput from '../../shared/components/FilterInput'
@@ -11,7 +11,6 @@ export default function CharactersPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
-  const prefetchedCharacterIds = useRef<Set<number>>(new Set())
   const parsedPage = Number(searchParams.get('page'))
   const initialPage = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1
   const initialNameFilter = searchParams.get('name') ?? ''
@@ -64,18 +63,6 @@ export default function CharactersPage() {
     }
   }, [selectedCharacter])
 
-  const prefetchCharacterDetails = (characterId: number) => {
-    if (prefetchedCharacterIds.current.has(characterId)) {
-      return
-    }
-
-    prefetchedCharacterIds.current.add(characterId)
-
-    void charactersService.getCharacterById(characterId).catch(() => {
-      prefetchedCharacterIds.current.delete(characterId)
-    })
-  }
-
   return (
     <section className="space-y-4">
       <header className="space-y-2">
@@ -102,7 +89,6 @@ export default function CharactersPage() {
                 character={character}
                 onOpenDetails={(characterId) => navigate(`/characters/${characterId}`)}
                 onPreview={setSelectedCharacter}
-                onPrefetchDetails={prefetchCharacterDetails}
               />
             ))}
           </div>

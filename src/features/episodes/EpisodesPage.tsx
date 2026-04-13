@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useEpisodes } from './hooks/useEpisodes'
 import CharacterCard from '../characters/components/CharacterCard'
-import { charactersService, type Character } from '../characters/services/charactersService'
+import { type Character } from '../characters/services/charactersService'
 import FilterInput from '../../shared/components/FilterInput'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
 import { useIntersectionObserver } from '../../shared/hooks/useIntersectionObserver'
@@ -15,7 +15,6 @@ export default function EpisodesPage() {
   const [loadingCharacterEpisodeIds, setLoadingCharacterEpisodeIds] = useState<Set<number>>(new Set())
   const [characterLoadErrors, setCharacterLoadErrors] = useState<Record<number, string>>({})
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
-  const prefetchedCharacterIds = useRef<Set<number>>(new Set())
 
   const {
     data,
@@ -54,18 +53,6 @@ export default function EpisodesPage() {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [selectedCharacter])
-
-  const prefetchCharacterDetails = (characterId: number) => {
-    if (prefetchedCharacterIds.current.has(characterId)) {
-      return
-    }
-
-    prefetchedCharacterIds.current.add(characterId)
-
-    void charactersService.getCharacterById(characterId).catch(() => {
-      prefetchedCharacterIds.current.delete(characterId)
-    })
-  }
 
   const getCharacterIdsFromEpisodeUrls = (urls: string[]) =>
     Array.from(new Set(urls
@@ -192,7 +179,6 @@ export default function EpisodesPage() {
                             character={character}
                             onOpenDetails={(characterId) => navigate(`/characters/${characterId}`)}
                             onPreview={setSelectedCharacter}
-                            onPrefetchDetails={prefetchCharacterDetails}
                           />
                         ))}
                       </div>

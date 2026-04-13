@@ -4,14 +4,12 @@ type CharacterCardProps = {
   character: Character
   onOpenDetails: (characterId: number) => void
   onPreview: (character: Character) => void
-  onPrefetchDetails: (characterId: number) => void
 }
 
 export default function CharacterCard({
   character,
   onOpenDetails,
   onPreview,
-  onPrefetchDetails,
 }: CharacterCardProps) {
   return (
     <article
@@ -20,8 +18,6 @@ export default function CharacterCard({
       <button
         type="button"
         onClick={() => onOpenDetails(character.id)}
-        onMouseEnter={() => onPrefetchDetails(character.id)}
-        onFocus={() => onPrefetchDetails(character.id)}
         className="w-full text-left"
       >
         <img
