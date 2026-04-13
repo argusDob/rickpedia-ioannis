@@ -95,8 +95,9 @@ export default function EpisodesPage() {
 
     setLoadingCharacterEpisodeIds((currentIds) => new Set(currentIds).add(episodeId))
     setCharacterLoadErrors((currentErrors) => {
-      const { [episodeId]: _removedError, ...rest } = currentErrors
-      return rest
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[episodeId]
+      return nextErrors
     })
 
     try {

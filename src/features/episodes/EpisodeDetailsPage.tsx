@@ -20,7 +20,6 @@ export default function EpisodeDetailsPage() {
   }, [hasValidId, parsedId])
 
   const { loading, error, retry } = useAsyncRequest({
-    deps: [request],
     request,
     onSuccess: setEpisode,
     onError: () => setEpisode(null),

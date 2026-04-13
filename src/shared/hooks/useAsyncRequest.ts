@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { isAbortError } from '../api/httpClient'
 
 type UseAsyncRequestOptions<TData> = {
-  deps: DependencyList
   request: (signal: AbortSignal) => Promise<TData>
   onSuccess: (data: TData) => void
   onError?: (error: unknown) => void
@@ -16,7 +15,6 @@ type UseAsyncRequestResult = {
 }
 
 export function useAsyncRequest<TData>({
-  deps,
   request,
   onSuccess,
   onError,
@@ -77,7 +75,7 @@ export function useAsyncRequest<TData>({
       isCancelled = true
       abortController.abort()
     }
-  }, [retryCount, ...deps])
+  }, [retryCount, request])
 
   return { loading, error, retry }
 }

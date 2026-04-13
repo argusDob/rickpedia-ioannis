@@ -51,7 +51,6 @@ export function useEpisodes(
   }, [])
 
   const { loading, error, retry } = useAsyncRequest({
-    deps: [request],
     request,
     onSuccess: handleSuccess,
     onError: handleError,

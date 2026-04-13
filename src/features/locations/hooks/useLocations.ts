@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   locationsService,
   type Location,
@@ -36,7 +36,6 @@ export function useLocations(
   service: LocationsService = locationsService,
 ): UseLocationsResult {
   const { initialPage = 1, initialNameFilter = '' } = options
-  const [data, setData] = useState<Location[]>([])
   const [apiResults, setApiResults] = useState<Location[]>([])
   const [page, setPage] = useState(initialPage)
   const [totalPages, setTotalPages] = useState(1)
@@ -75,30 +74,21 @@ export function useLocations(
     setTotalPages(totalUiPages)
   }, [])
   const handleError = useCallback(() => {
-    setData([])
     setApiResults([])
     setTotalPages(1)
   }, [])
 
   const { loading, error, retry } = useAsyncRequest({
-    deps: [request],
     request,
     onSuccess: handleSuccess,
     onError: handleError,
     getErrorMessage: (err) => getApiErrorMessage(err, 'Unexpected error while loading locations'),
   })
 
-  useEffect(() => {
+  const data = useMemo(() => {
     const sliceStart = subPageIndex * ITEMS_PER_UI_PAGE
-    const nextData = apiResults.slice(sliceStart, sliceStart + ITEMS_PER_UI_PAGE)
-
-    if (nextData.length === 0 && subPageIndex > 0 && !loading) {
-      setPage((currentPage) => Math.max(currentPage - 1, 1))
-      return
-    }
-
-    setData(nextData)
-  }, [apiResults, loading, subPageIndex])
+    return apiResults.slice(sliceStart, sliceStart + ITEMS_PER_UI_PAGE)
+  }, [apiResults, subPageIndex])
 
   return {
     data,

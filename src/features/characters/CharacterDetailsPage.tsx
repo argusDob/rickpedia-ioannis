@@ -20,7 +20,6 @@ export default function CharacterDetailsPage() {
   }, [hasValidId, parsedId])
 
   const { loading, error, retry } = useAsyncRequest({
-    deps: [request],
     request,
     onSuccess: setCharacter,
     onError: () => setCharacter(null),
