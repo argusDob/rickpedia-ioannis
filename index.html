@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        const { search } = window.location
+        if (!search.startsWith('?/')) {
+          return
+        }
+
+        const decodedPath = search
+          .slice(2)
+          .replace(/~and~/g, '&')
+        const targetUrl = `${window.location.pathname}${decodedPath}${window.location.hash}`
+        window.history.replaceState(null, '', targetUrl)
+      })()
+    </script>
     <title>rickpedia</title>
   </head>
   <body>

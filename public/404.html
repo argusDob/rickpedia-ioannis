@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Redirecting...</title>
+    <script>
+      (function () {
+        const { hostname, pathname, search, hash } = window.location
+        const parts = pathname.split('/').filter(Boolean)
+        const isGithubPagesHost = hostname.endsWith('.github.io')
+        const basePath = isGithubPagesHost && parts.length > 0 ? `/${parts[0]}` : ''
+        const routePath = isGithubPagesHost && parts.length > 1
+          ? `/${parts.slice(1).join('/')}`
+          : pathname
+        const encodedQuery = search ? search.replace(/&/g, '~and~') : ''
+        const destination = `${basePath}/?${routePath}${encodedQuery}${hash}`
+        window.location.replace(destination)
+      })()
+    </script>
+  </head>
+  <body></body>
+</html>
