@@ -24,7 +24,6 @@ type CacheEntry = {
   expiresAt: number
 }
 
-const inFlightRequests = new Map<string, Promise<unknown>>()
 const responseCache = new Map<string, CacheEntry>()
 const DEFAULT_TTL_MS = 60_000
 const MAX_CACHE_ENTRIES = 200
@@ -55,14 +54,14 @@ function buildQueryCacheKey(
     return `${url}::`
   }
 
-  const normalizedEntries = Object.entries(params)
+  const normalizedEntries: [string, string][] = Object.entries(params)
     .filter(([, value]) => value !== undefined && value !== '')
-    .map(([key, value]) => {
+    .map<[string, string]>(([key, value]) => {
       if (typeof value === 'string') {
-        return [key, value.trim().toLowerCase()] as const
+        return [key, value.trim().toLowerCase()]
       }
 
-      return [key, String(value)] as const
+      return [key, String(value)]
     })
     .sort(([a], [b]) => a.localeCompare(b))
 
@@ -128,49 +127,29 @@ export function createFetchHttpClient(): HttpClient {
         }
       }
 
-      const existingRequest = signal ? null : inFlightRequests.get(requestUrl)
+      const response = await fetch(requestUrl, { signal })
 
-      if (existingRequest) {
-        return (await existingRequest) as T
+      if (!response.ok) {
+        throw new HttpError(
+          `Request failed with status ${response.status}`,
+          response.status,
+          response.statusText,
+        )
       }
 
-      const request = (async () => {
-        const response = await fetch(requestUrl, { signal })
+      const data = (await response.json()) as T
 
-        if (!response.ok) {
-          throw new HttpError(
-            `Request failed with status ${response.status}`,
-            response.status,
-            response.statusText,
-          )
-        }
+      if (shouldUseCache) {
+        responseCache.set(cacheKey, {
+          data,
+          expiresAt: Date.now() + DEFAULT_TTL_MS,
+        })
 
-        const data = (await response.json()) as T
-
-        if (shouldUseCache) {
-          responseCache.set(cacheKey, {
-            data,
-            expiresAt: Date.now() + DEFAULT_TTL_MS,
-          })
-
-          console.log('responseCache', responseCache)
-          enforceMaxEntries()
-        }
-
-        return data
-      })()
-
-      if (!signal) {
-        inFlightRequests.set(requestUrl, request)
+        console.log('responseCache', responseCache)
+        enforceMaxEntries()
       }
 
-      try {
-        return await request
-      } finally {
-        if (!signal) {
-          inFlightRequests.delete(requestUrl)
-        }
-      }
+      return data
     },
     clearCache() {
       responseCache.clear()
