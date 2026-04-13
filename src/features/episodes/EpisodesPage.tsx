@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useEpisodes } from './hooks/useEpisodes'
 import CharacterCard from '../characters/components/CharacterCard'
@@ -36,6 +36,27 @@ export default function EpisodesPage() {
   })
   const isInitialLoading = loading && data.length === 0
 
+  const getCharacterIdsFromEpisodeUrls = useCallback((urls: string[]) =>
+    Array.from(new Set(urls
+      .map((url) => Number(url.split('/').at(-1)))
+      .filter((id) => Number.isInteger(id) && id > 0))), [])
+
+  const handleOpenCharacterDetails = useCallback((characterId: number) => {
+    navigate(`/characters/${characterId}`)
+  }, [navigate])
+
+  const handleOpenEpisodeDetails = useCallback((episodeId: number) => {
+    navigate(`/episodes/${episodeId}`)
+  }, [navigate])
+
+  const handleCloseCharacterPreview = useCallback(() => {
+    setSelectedCharacter(null)
+  }, [])
+
+  const handlePreviewModalClick = useCallback((event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation()
+  }, [])
+
   useEffect(() => {
     if (!selectedCharacter) {
       return
@@ -54,12 +75,7 @@ export default function EpisodesPage() {
     }
   }, [selectedCharacter])
 
-  const getCharacterIdsFromEpisodeUrls = (urls: string[]) =>
-    Array.from(new Set(urls
-      .map((url) => Number(url.split('/').at(-1)))
-      .filter((id) => Number.isInteger(id) && id > 0)))
-
-  const loadEpisodeCharacters = async (episodeId: number, characterUrls: string[]) => {
+  const loadEpisodeCharacters = useCallback(async (episodeId: number, characterUrls: string[]) => {
     if (episodeCharacters[episodeId]) {
       return
     }
@@ -98,9 +114,9 @@ export default function EpisodesPage() {
         return nextIds
       })
     }
-  }
+  }, [episodeCharacters, getCharacterIdsFromEpisodeUrls])
 
-  const toggleEpisodeCharacters = (episodeId: number, characterUrls: string[]) => {
+  const toggleEpisodeCharacters = useCallback((episodeId: number, characterUrls: string[]) => {
     const isExpanded = expandedEpisodeIds.has(episodeId)
 
     setExpandedEpisodeIds((currentIds) => {
@@ -118,7 +134,7 @@ export default function EpisodesPage() {
     if (!isExpanded && !episodeCharacters[episodeId] && !loadingCharacterEpisodeIds.has(episodeId)) {
       void loadEpisodeCharacters(episodeId, characterUrls)
     }
-  }
+  }, [episodeCharacters, expandedEpisodeIds, loadingCharacterEpisodeIds, loadEpisodeCharacters])
 
   return (
     <section className="space-y-4">
@@ -144,7 +160,7 @@ export default function EpisodesPage() {
               <li key={episode.id} className="rounded-md border border-slate-200 bg-white p-4">
                 <button
                   type="button"
-                  onClick={() => navigate(`/episodes/${episode.id}`)}
+                  onClick={() => handleOpenEpisodeDetails(episode.id)}
                   className="text-left text-lg font-semibold text-slate-900 transition hover:text-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                 >
                   {episode.name}
@@ -183,7 +199,7 @@ export default function EpisodesPage() {
                           <CharacterCard
                             key={character.id}
                             character={character}
-                            onOpenDetails={(characterId) => navigate(`/characters/${characterId}`)}
+                            onOpenDetails={handleOpenCharacterDetails}
                             onPreview={setSelectedCharacter}
                           />
                         ))}
@@ -209,14 +225,14 @@ export default function EpisodesPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
           role="presentation"
-          onClick={() => setSelectedCharacter(null)}
+          onClick={handleCloseCharacterPreview}
         >
           <article
             role="dialog"
             aria-modal="true"
             aria-labelledby="character-detail-title"
             className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl"
-            onClick={(event) => event.stopPropagation()}
+            onClick={handlePreviewModalClick}
           >
             <img
               className="h-64 w-full object-cover"
@@ -234,7 +250,7 @@ export default function EpisodesPage() {
               <p className="text-slate-600">Location: {selectedCharacter.location.name}</p>
               <button
                 type="button"
-                onClick={() => setSelectedCharacter(null)}
+                onClick={handleCloseCharacterPreview}
                 className="mt-3 inline-flex rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
               >
                 Close

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type MouseEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import CharacterCard from './components/CharacterCard'
 import { useCharacters } from './hooks/useCharacters'
@@ -28,6 +28,18 @@ export default function CharactersPage() {
     nextPage,
     prevPage,
   } = useCharacters({ initialPage, initialNameFilter })
+
+  const handleOpenCharacterDetails = useCallback((characterId: number) => {
+    navigate(`/characters/${characterId}`)
+  }, [navigate])
+
+  const handleCloseCharacterPreview = useCallback(() => {
+    setSelectedCharacter(null)
+  }, [])
+
+  const handlePreviewModalClick = useCallback((event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation()
+  }, [])
 
   useEffect(() => {
     const nextSearchParams = new URLSearchParams()
@@ -87,7 +99,7 @@ export default function CharactersPage() {
               <CharacterCard
                 key={character.id}
                 character={character}
-                onOpenDetails={(characterId) => navigate(`/characters/${characterId}`)}
+                onOpenDetails={handleOpenCharacterDetails}
                 onPreview={setSelectedCharacter}
               />
             ))}
@@ -108,14 +120,14 @@ export default function CharactersPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
           role="presentation"
-          onClick={() => setSelectedCharacter(null)}
+          onClick={handleCloseCharacterPreview}
         >
           <article
             role="dialog"
             aria-modal="true"
             aria-labelledby="character-detail-title"
             className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl"
-            onClick={(event) => event.stopPropagation()}
+            onClick={handlePreviewModalClick}
           >
             <img
               className="h-64 w-full object-cover"
@@ -133,7 +145,7 @@ export default function CharactersPage() {
               <p className="text-slate-600">Location: {selectedCharacter.location.name}</p>
               <button
                 type="button"
-                onClick={() => setSelectedCharacter(null)}
+                onClick={handleCloseCharacterPreview}
                 className="mt-3 inline-flex rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
               >
                 Close

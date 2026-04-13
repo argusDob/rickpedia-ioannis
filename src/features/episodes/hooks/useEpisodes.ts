@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { episodesService, type Episode, type EpisodesService } from '../services/episodesService'
 import { isAbortError } from '../../../shared/api/httpClient'
 import { useDebouncedValue } from '../../../shared/hooks/useDebouncedValue'
@@ -32,6 +32,19 @@ export function useEpisodes(
   const [totalPages, setTotalPages] = useState(1)
   const [nameFilter, setNameFilter] = useState(initialNameFilter)
   const debouncedNameFilter = useDebouncedValue(nameFilter, 500)
+
+  const handleNameFilterChange = useCallback((value: string) => {
+    setPage(1)
+    setNameFilter(value)
+  }, [])
+
+  const loadMore = useCallback(() => {
+    if (loading || page >= totalPages) {
+      return
+    }
+
+    setPage((currentPage) => Math.min(currentPage + 1, totalPages))
+  }, [loading, page, totalPages])
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -88,16 +101,7 @@ export function useEpisodes(
     totalPages,
     hasNextPage: page < totalPages,
     nameFilter,
-    setNameFilter: (value) => {
-      setPage(1)
-      setNameFilter(value)
-    },
-    loadMore: () => {
-      if (loading || page >= totalPages) {
-        return
-      }
-
-      setPage((currentPage) => Math.min(currentPage + 1, totalPages))
-    },
+    setNameFilter: handleNameFilterChange,
+    loadMore,
   }
 }

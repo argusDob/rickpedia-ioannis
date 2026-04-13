@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   locationsService,
   type Location,
@@ -44,6 +44,19 @@ export function useLocations(
   const debouncedNameFilter = useDebouncedValue(nameFilter, 500)
   const apiPage = Math.floor((page - 1) / (API_PAGE_SIZE / ITEMS_PER_UI_PAGE)) + 1
   const subPageIndex = (page - 1) % (API_PAGE_SIZE / ITEMS_PER_UI_PAGE)
+
+  const handleNameFilterChange = useCallback((value: string) => {
+    setPage(1)
+    setNameFilter(value)
+  }, [])
+
+  const nextPage = useCallback(() => {
+    setPage((currentPage) => Math.min(currentPage + 1, totalPages))
+  }, [totalPages])
+
+  const prevPage = useCallback(() => {
+    setPage((currentPage) => Math.max(currentPage - 1, 1))
+  }, [])
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -123,11 +136,8 @@ export function useLocations(
     hasNextPage: page < totalPages,
     hasPrevPage: page > 1,
     nameFilter,
-    setNameFilter: (value) => {
-      setPage(1)
-      setNameFilter(value)
-    },
-    nextPage: () => setPage((currentPage) => Math.min(currentPage + 1, totalPages)),
-    prevPage: () => setPage((currentPage) => Math.max(currentPage - 1, 1)),
+    setNameFilter: handleNameFilterChange,
+    nextPage,
+    prevPage,
   }
 }

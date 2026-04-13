@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   charactersService,
   type Character,
@@ -39,6 +39,19 @@ export function useCharacters(
   const [totalPages, setTotalPages] = useState(1)
   const [nameFilter, setNameFilter] = useState(initialNameFilter)
   const debouncedNameFilter = useDebouncedValue(nameFilter, 500)
+
+  const handleNameFilterChange = useCallback((value: string) => {
+    setPage(1)
+    setNameFilter(value)
+  }, [])
+
+  const nextPage = useCallback(() => {
+    setPage((currentPage) => Math.min(currentPage + 1, totalPages))
+  }, [totalPages])
+
+  const prevPage = useCallback(() => {
+    setPage((currentPage) => Math.max(currentPage - 1, 1))
+  }, [])
 
   useEffect(() => {
     const filters: CharacterFilters = { name: debouncedNameFilter }
@@ -93,11 +106,8 @@ export function useCharacters(
     hasNextPage: page < totalPages,
     hasPrevPage: page > 1,
     nameFilter,
-    setNameFilter: (value) => {
-      setPage(1)
-      setNameFilter(value)
-    },
-    nextPage: () => setPage((currentPage) => Math.min(currentPage + 1, totalPages)),
-    prevPage: () => setPage((currentPage) => Math.max(currentPage - 1, 1)),
+    setNameFilter: handleNameFilterChange,
+    nextPage,
+    prevPage,
   }
 }

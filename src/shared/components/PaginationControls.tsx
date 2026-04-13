@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 type PaginationControlsProps = {
   page: number
   totalPages: number
@@ -7,7 +9,7 @@ type PaginationControlsProps = {
   onNext: () => void
 }
 
-export default function PaginationControls({
+function PaginationControls({
   page,
   totalPages,
   hasPrevPage,
@@ -39,3 +41,5 @@ export default function PaginationControls({
     </div>
   )
 }
+
+export default memo(PaginationControls)
