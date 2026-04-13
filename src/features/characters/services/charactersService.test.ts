@@ -21,6 +21,8 @@ describe('createCharactersService caching', () => {
     const character = createCharacter(1)
     const client: HttpClient = {
       get: vi.fn().mockResolvedValue(character),
+      clearCache: vi.fn(),
+      invalidateCache: vi.fn(),
     }
     const service = createCharactersService(client)
 
@@ -36,6 +38,8 @@ describe('createCharactersService caching', () => {
     const character = createCharacter(2)
     const client: HttpClient = {
       get: vi.fn().mockResolvedValue(character),
+      clearCache: vi.fn(),
+      invalidateCache: vi.fn(),
     }
     const service = createCharactersService(client)
 
@@ -57,6 +61,8 @@ describe('createCharactersService caching', () => {
         .fn()
         .mockResolvedValueOnce(cachedCharacter)
         .mockResolvedValueOnce(fetchedCharacter),
+      clearCache: vi.fn(),
+      invalidateCache: vi.fn(),
     }
     const service = createCharactersService(client)
 
