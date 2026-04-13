@@ -1,5 +1,9 @@
 # Rickpedia
 
+## Deployed app
+
+- [Rickpedia Live](https://argusdob.github.io/rickpedia-ioannis/characters)
+
 ## Implemented performance optimizations
 
 - **Debounced filtering (500ms):** Queries for Characters, Episodes, and Locations are sent only after the user pauses typing, reducing unnecessary requests.
