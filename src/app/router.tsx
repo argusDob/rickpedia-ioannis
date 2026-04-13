@@ -9,6 +9,7 @@ const LocationsPage = lazy(() => import('../features/locations/LocationsPage'))
 const EpisodesPage = lazy(() => import('../features/episodes/EpisodesPage'))
 const LocationDetailsPage = lazy(() => import('../features/locations/LocationDetailsPage'))
 const EpisodeDetailsPage = lazy(() => import('../features/episodes/EpisodeDetailsPage'))
+const routerBasename = import.meta.env.BASE_URL
 
 export const router = createBrowserRouter([
   {
@@ -66,4 +67,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+], {
+  basename: routerBasename,
+})
