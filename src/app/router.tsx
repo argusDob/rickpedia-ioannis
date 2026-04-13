@@ -7,6 +7,8 @@ const CharactersPage = lazy(() => import('../features/characters/CharactersPage'
 const CharacterDetailsPage = lazy(() => import('../features/characters/CharacterDetailsPage'))
 const LocationsPage = lazy(() => import('../features/locations/LocationsPage'))
 const EpisodesPage = lazy(() => import('../features/episodes/EpisodesPage'))
+const LocationDetailsPage = lazy(() => import('../features/locations/LocationDetailsPage'))
+const EpisodeDetailsPage = lazy(() => import('../features/episodes/EpisodeDetailsPage'))
 
 export const router = createBrowserRouter([
   {
@@ -39,10 +41,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'locations/:id',
+        element: (
+          <Suspense fallback={<SuspenseFallback message="Loading route..." />}>
+            <LocationDetailsPage />
+          </Suspense>
+        ),
+      },
+      {
         path: 'episodes',
         element: (
           <Suspense fallback={<SuspenseFallback message="Loading route..." />}>
             <EpisodesPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'episodes/:id',
+        element: (
+          <Suspense fallback={<SuspenseFallback message="Loading route..." />}>
+            <EpisodeDetailsPage />
           </Suspense>
         ),
       },

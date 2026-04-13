@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useEpisodes } from './hooks/useEpisodes'
 import CharacterCard from '../characters/components/CharacterCard'
-import { type Character } from '../characters/services/charactersService'
+import { charactersService, type Character } from '../characters/services/charactersService'
 import FilterInput from '../../shared/components/FilterInput'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
 import { useIntersectionObserver } from '../../shared/hooks/useIntersectionObserver'
@@ -142,7 +142,13 @@ export default function EpisodesPage() {
           <ul className="space-y-3">
             {data.map((episode) => (
               <li key={episode.id} className="rounded-md border border-slate-200 bg-white p-4">
-                <h2 className="font-semibold text-slate-900">{episode.name}</h2>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/episodes/${episode.id}`)}
+                  className="text-left text-lg font-semibold text-slate-900 transition hover:text-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                >
+                  {episode.name}
+                </button>
                 <p className="text-sm text-slate-600">{episode.episode}</p>
                 <p className="text-sm text-slate-600">Aired: {episode.air_date}</p>
                 <div className="mt-3">

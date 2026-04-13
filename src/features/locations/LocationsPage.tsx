@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useLocations } from './hooks/useLocations'
 import FilterInput from '../../shared/components/FilterInput'
 import PaginationControls from '../../shared/components/PaginationControls'
 import SuspenseFallback from '../../shared/components/SuspenseFallback'
 
 export default function LocationsPage() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const parsedPage = Number(searchParams.get('page'))
   const initialPage = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1
@@ -63,7 +64,13 @@ export default function LocationsPage() {
           <ul className="space-y-3">
             {data.map((location) => (
               <li key={location.id} className="rounded-md border border-slate-200 bg-white p-4">
-                <h2 className="font-semibold text-slate-900">{location.name}</h2>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/locations/${location.id}`)}
+                  className="text-left text-lg font-semibold text-slate-900 transition hover:text-cyan-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                >
+                  {location.name}
+                </button>
                 <p className="text-sm text-slate-600">Type: {location.type}</p>
                 <p className="text-sm text-slate-600">Dimension: {location.dimension}</p>
               </li>
